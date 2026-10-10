@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101820">
+<title>CAT Abfahrten</title>
+<style>
+:root{color-scheme:dark;--bg:#101820;--panel:#1b2833;--muted:#9aabb8;--accent:#53e0b0;--line:#30414e}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#f5f8fa;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:520px;margin:auto;padding:22px 16px 32px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
+.brand{font-weight:800;letter-spacing:.12em;font-size:15px}.sub{color:var(--muted);font-size:12px;margin-top:4px}
+.train{font-size:27px;color:var(--accent)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:14px}
+.label{font-size:11px;letter-spacing:.13em;color:var(--muted);font-weight:700}
+.big{font-size:clamp(54px,15vw,76px);font-weight:800;line-height:1.12;letter-spacing:-.04em;margin:8px 0 3px;font-variant-numeric:tabular-nums}
+.countdown{color:var(--accent);font-weight:700;font-size:15px}
+.row{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.row:last-child{border-bottom:0}.row small{color:var(--muted)}.time{font-size:22px;font-weight:750}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+label{display:block;color:var(--muted);font-size:12px;margin-bottom:7px}
+input{width:100%;background:#0f1921;border:1px solid #405463;border-radius:10px;padding:12px;color:#fff;font:inherit;font-size:17px}
+button{width:100%;border:0;border-radius:11px;padding:14px 12px;font:inherit;font-weight:750;cursor:pointer;background:var(--accent);color:#06251c;margin-top:14px}
+button.secondary{background:#273946;color:#f5f8fa;border:1px solid #405463}
+.note{font-size:12px;color:var(--muted);line-height:1.5;margin:12px 2px 0}
+.status{font-size:12px;color:var(--muted);margin-top:8px}
+</style>
+</head>
+<body>
+<main>
+<header><div><div class="brand">CAT · DEPARTURES</div><div class="sub">Persönliche Abfahrtsübersicht</div></div><div class="train">↗</div></header>
+<section class="panel">
+  <div class="label">NÄCHSTE ABFAHRT</div>
+  <div class="big" id="next">--:--</div>
+  <div class="countdown" id="left">Startzeit einstellen</div>
+</section>
+<section class="panel">
+  <div class="label">DIE NÄCHSTEN ABFAHRTEN</div>
+  <div id="list"></div>
+</section>
+<section class="panel">
+  <div class="label" style="margin-bottom:14px">TAKT EINSTELLEN</div>
+  <div class="controls">
+    <div><label for="first">Erste Abfahrt</label><input id="first" type="time" value="06:24"></div>
+    <div><label for="interval">Intervall (Min.)</label><input id="interval" type="number" min="1" max="240" value="12" inputmode="numeric"></div>
+  </div>
+  <button id="apply">Abfahrten anzeigen</button>
+  <button class="secondary" id="now">Erste Abfahrt = jetzt + 1 Minute</button>
+  <div class="status" id="status">Takt: alle 12 Minuten</div>
+  <p class="note">Die Liste berechnet sich aus deiner eingestellten ersten Abfahrt. Beispielzeiten bitte vor Dienstbeginn mit dem offiziellen Fahrplan abgleichen.</p>
+</section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let firstMinutes=6*60+24, interval=12;
+const pad=n=>String(n).padStart(2,'0');
+const fmt=m=>`${pad(Math.floor(((m%1440)+1440)%1440/60))}:${pad(((m%1440)+1440)%1440%60)}`;
+function readSettings(){
+ const [h,m]=($('first').value||'06:24').split(':').map(Number);
+ firstMinutes=h*60+m;
+ interval=Math.max(1,Math.min(240,parseInt($('interval').value,10)||12));
+ $('status').textContent=`Takt: alle ${interval} Minuten`;
+ render();
+}
+function render(){
+ const now=new Date(), nowM=now.getHours()*60+now.getMinutes()+now.getSeconds()/60;
+ let k=Math.ceil((nowM-firstMinutes)/interval);
+ if(k<0) k=0;
+ let next=firstMinutes+k*interval;
+ // If the first time is in the past, advance to the next upcoming departure.
+ if(next<nowM-0.02){k++;next+=interval}
+ $('next').textContent=fmt(next);
+ let delta=Math.max(0,Math.round((next-nowM)*60));
+ $('left').textContent=delta<60?`In ${delta} Sek.`:`In ${Math.floor(delta/60)} Min. ${pad(delta%60)} Sek.`;
+ let out='';
+ for(let i=0;i<6;i++){
+  const t=next+i*interval;
+  out+=`<div class="row"><small>${i===0?'Nächste':i===1?'Danach':'Weitere'}</small><span class="time">${fmt(t)}</span></div>`;
+ }
+ $('list').innerHTML=out;
+}
+$('apply').addEventListener('click',readSettings);
+$('now').addEventListener('click',()=>{
+ const d=new Date(Date.now()+60000);
+ $('first').value=`${pad(d.getHours())}:${pad(d.getMinutes())}`;
+ readSettings();
+});
+$('first').addEventListener('change',readSettings);
+$('interval').addEventListener('change',readSettings);
+readSettings();setInterval(render,1000);
+</script>
+</body></html>

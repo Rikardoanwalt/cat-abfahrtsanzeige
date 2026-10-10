@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101820">
+<title>CAT Abfahrten</title>
+<style>
+:root{color-scheme:dark;--bg:#101820;--panel:#1b2833;--muted:#9aabb8;--accent:#80bd35;--line:#344653;--white:#f6f8fa}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--white);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:520px;margin:auto;padding:20px 15px 30px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.brand{font-size:12px;font-weight:850;letter-spacing:.15em;color:var(--muted)}
+h1{font-size:23px;margin:5px 0 0}
+.clock{font-size:18px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:7px;font-weight:700;letter-spacing:.05em}
+select{width:100%;background:#0f1921;border:1px solid #405463;border-radius:12px;padding:14px 12px;color:#fff;font:inherit;font-size:16px;margin-bottom:14px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:17px;padding:18px;margin-bottom:14px}
+.eyebrow{font-size:11px;letter-spacing:.14em;color:var(--muted);font-weight:800}
+.big{font-size:clamp(56px,17vw,78px);font-weight:850;line-height:1.08;letter-spacing:-.04em;margin:8px 0 4px;font-variant-numeric:tabular-nums}
+.countdown{color:var(--accent);font-size:15px;font-weight:750}
+.listhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+.listhead strong{font-size:15px}
+.item{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid rgba(148,163,184,.16);gap:12px}
+.item:last-child{border-bottom:0}
+.item span:first-child{font-size:13px;color:var(--muted)}
+.item span:last-child{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+.note{font-size:11px;color:var(--muted);line-height:1.5;margin:14px 2px 0}
+button{border:1px solid #405463;background:#273946;color:var(--white);border-radius:10px;padding:11px 12px;font:inherit;font-weight:700}
+.rowbtn{display:flex;gap:8px;margin-top:12px}
+.rowbtn button{flex:1}
+@media(max-width:360px){main{padding:15px 10px}.panel{padding:15px}.item span:last-child{font-size:20px}}
+</style>
+</head>
+<body>
+<main>
+<header>
+ <div><div class="brand">CITY AIRPORT TRAIN</div><h1>Abfahrtsanzeige</h1></div>
+ <div class="clock" id="clock">--:--</div>
+</header>
+
+<label for="station">WO BIST DU GERADE?</label>
+<select id="station">
+ <option value="mitte">Wien Mitte → Flughafen</option>
+ <option value="airport">Flughafen Wien → Wien Mitte</option>
+</select>
+
+<section class="panel">
+ <div class="eyebrow" id="nextLabel">NÄCHSTE ABFAHRT AB WIEN MITTE</div>
+ <div class="big" id="next">--:--</div>
+ <div class="countdown" id="countdown">Berechne nächste Abfahrt …</div>
+</section>
+
+<section class="panel">
+ <div class="listhead"><strong>Nächste Abfahrten</strong><span class="eyebrow" id="direction">RICHTUNG FLUGHAFEN</span></div>
+ <div id="upcoming"></div>
+</section>
+
+<div class="rowbtn">
+ <button id="refresh">Aktualisieren</button>
+ <button id="now">Uhrzeit aktualisieren</button>
+</div>
+<p class="note">Die Abfahrten wurden aus deinem Fahrplan-Screenshot übernommen. Bitte bei Fahrplanänderungen die offiziellen CAT-Angaben prüfen. Die Liste zeigt die nächsten planmäßigen Abfahrten ab der ausgewählten Station.</p>
+</main>
+<script>
+const schedules = {
+ mitte: {
+  label:"NÄCHSTE ABFAHRT AB WIEN MITTE",
+  direction:"RICHTUNG FLUGHAFEN",
+  hours:{
+   0:[],1:[],2:[],3:[],4:[],5:[30,45],6:[0,15,30,45],
+   7:[0,12,24,36,48],8:[0,12,24,36,48],9:[0,12,24,36,48],
+   10:[0,12,24,36,48],11:[0,12,24,36,48],12:[0,12,24,36,48],
+   13:[0,12,24,36,48],14:[0,12,24,36,48],15:[0,12,24,36,48],
+   16:[0,12,24,36,48],17:[0,12,24,36,48],18:[0,12,24,36,48],
+   19:[0,15,30,45],20:[0,15,30,45],21:[0,15,30,45],22:[0,15,30,45],23:[0,15]
+  }
+ },
+ airport: {
+  label:"NÄCHSTE ABFAHRT AB FLUGHAFEN WIEN",
+  direction:"RICHTUNG WIEN MITTE",
+  hours:{
+   0:[],1:[],2:[],3:[],4:[],5:[],
+   6:[10,25,40,55],7:[7,19,31,43,55],8:[7,19,31,43,55],
+   9:[13,25,37,49],10:[1,13,25,37,49],11:[1,13,25,37,49],
+   12:[1,13,25,37,49],13:[1,13,25,37,49],14:[1,13,25,37,49],
+   15:[1,13,25,37,49],16:[1,7,19,31,43,55],17:[7,19,31,43,55],
+   18:[7,19,31,43,55],19:[7,22,37,52],20:[7,22,37,52],
+   21:[7,22,37,52],22:[7,22,37,52],23:[7,22,37]
+  }
+ }
+};
+function allDepartures(key){
+ const arr=[];
+ const hours=schedules[key].hours;
+ for(let h=0;h<24;h++) for(const m of (hours[h]||[])) arr.push(h*60+m);
+ return arr;
+}
+function fmt(total){
+ total=((total%1440)+1440)%1440;
+ return String(Math.floor(total/60)).padStart(2,'0')+':'+String(total%60).padStart(2,'0');
+}
+function render(){
+ const now=new Date();
+ const nowMinutes=now.getHours()*60+now.getMinutes()+now.getSeconds()/60;
+ document.getElementById('clock').textContent=fmt(now.getHours()*60+now.getMinutes());
+ const key=document.getElementById('station').value;
+ const data=schedules[key];
+ document.getElementById('nextLabel').textContent=data.label;
+ document.getElementById('direction').textContent=data.direction;
+ let upcoming=[];
+ for(let dayOffset=0;dayOffset<=1;dayOffset++){
+  for(const t of allDepartures(key)){
+   const absolute=t+dayOffset*1440;
+   if(absolute>nowMinutes+dayOffset*1440-0.05 && (dayOffset===1 || t>=nowMinutes-0.05)){
+    upcoming.push({time:fmt(t),absolute});
+   }
+  }
+ }
+ // If today's departures are over, show tomorrow's first ones.
+ if(upcoming.length===0 || (nowMinutes>allDepartures(key).slice(-1)[0] && upcoming.every(x=>x.absolute<1440))){
+  upcoming=allDepartures(key).slice(0,8).map(t=>({time:fmt(t),absolute:t+1440}));
+ }
+ upcoming.sort((a,b)=>a.absolute-b.absolute);
+ const next=upcoming[0];
+ if(!next){
+  document.getElementById('next').textContent='—';
+  document.getElementById('countdown').textContent='Keine Abfahrtsdaten vorhanden';
+  document.getElementById('upcoming').innerHTML='';
+  return;
+ }
+ document.getElementById('next').textContent=next.time;
+ let delta=Math.max(0,Math.round((next.absolute-nowMinutes)*60));
+ const mins=Math.floor(delta/60), secs=delta%60;
+ document.getElementById('countdown').textContent=mins===0?`In ${secs} Sekunden`:`In ${mins} Min. ${String(secs).padStart(2,'0')} Sek.`;
+ document.getElementById('upcoming').innerHTML=upcoming.slice(0,6).map((x,i)=>`<div class="item"><span>${i===0?'Nächste Abfahrt':i===1?'Danach':'Weitere Abfahrt'}</span><span>${x.time}</span></div>`).join('');
+}
+document.getElementById('station').addEventListener('change',render);
+document.getElementById('refresh').addEventListener('click',render);
+document.getElementById('now').addEventListener('click',render);
+render();setInterval(render,1000);
+</script>
+</body>
+</html>
